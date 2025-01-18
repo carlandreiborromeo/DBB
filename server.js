@@ -4,7 +4,7 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 
 const app = express();
-const port = 5000; // or any port you prefer
+const port = process.env.PORT || 8080; // Use dynamic port assignment for Azure
 
 app.use(bodyParser.json());
 app.use(cors());
@@ -24,7 +24,15 @@ const config = {
 // Test database connection
 sql.connect(config)
   .then(() => console.log('Database connected successfully'))
-  .catch((err) => console.error('Error connecting to database:', err));
+  .catch((err) => {
+    console.error('Error connecting to database:', err.message);
+    process.exit(1); // Exit the process if the database connection fails
+  });
+
+// Health check endpoint
+app.get('/', (req, res) => {
+  res.send('App is running and healthy.');
+});
 
 // Route to save game data
 app.post('/save-game', async (req, res) => {
@@ -32,19 +40,19 @@ app.post('/save-game', async (req, res) => {
 
   try {
     await sql.connect(config);
-    const result = await sql.query`
+    await sql.query`
       INSERT INTO PlayerScores (PlayerName, Turns, TimeElapsed)
       VALUES (${name}, ${turns}, ${time})
     `;
 
-    res.status(200).json({ msg: 'Game data saved' });
+    res.status(201).json({ msg: 'Game data saved successfully' });
   } catch (err) {
-    console.error('Error saving game data:', err);
+    console.error('Error saving game data:', err.message);
     res.status(500).json({ msg: 'Failed to save game data' });
   }
 });
 
-// Start server
+// Start the server
 app.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
+  console.log(`Server is running on port ${port}`);
 });
